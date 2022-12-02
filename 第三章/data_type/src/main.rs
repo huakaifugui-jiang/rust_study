@@ -2,7 +2,7 @@
  * @Author: wlj
  * @Date: 2022-12-01 11:15:30
  * @LastEditors: wlj
- * @LastEditTime: 2022-12-01 17:23:16
+ * @LastEditTime: 2022-12-02 09:46:30
  * @Description: 数据类型
  * @see:https://kaisery.github.io/trpl-zh-cn/ch03-02-data-types.html#%E6%A0%87%E9%87%8F%E7%B1%BB%E5%9E%8B
  */
@@ -131,6 +131,10 @@ fn main() {
     //我们也可以使用点号（.）后跟值的索引来直接访问它们
     let five_hundred = tup1.0; //跟大多数编程语言一样，元组的第一个索引值是 0
     println!("five_hundred:{five_hundred}");
+
+    //我们可以通过{:?}来打印出元组
+    println!("tup1={:?}",tup1);
+
     //不带任何值的元组有个特殊的名称，叫做 单元（unit） 元组。这种值以及对应的类型都写作 ()，表示空值或空的返回类型。如果表达式不返回任何其他值，则会隐式返回单元值。
 
     //数组类型
