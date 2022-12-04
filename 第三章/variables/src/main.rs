@@ -1,8 +1,8 @@
 /*
  * @Author: wlj
  * @Date: 2022-12-01 09:43:57
- * @LastEditors: wlj
- * @LastEditTime: 2022-12-01 11:11:08
+ * @LastEditors: wulongjiang
+ * @LastEditTime: 2022-12-02 22:03:08
  * @Description: 变量和可变性
  * @see:https://kaisery.github.io/trpl-zh-cn/ch03-01-variables-and-mutability.html
  */
@@ -34,7 +34,7 @@ fn main() {
     const THREE_HOURS_IN_SECONDS: u32 = 60 * 60 * 3;
     //常量可以是一个数值计算表达式 使我们可以选择以更容易理解和验证的方式写出此值，而不是将此常量设置为值10,800。
     //有关声明常量时可以使用哪些操作的详细信息，请参阅 Rust Reference 的常量求值部分 https://doc.rust-lang.org/reference/const_eval.html。
-    //将遍布于应用程序中的硬编码(https://zh.wikipedia.org/zh-cn/%E5%AF%AB%E6%AD%BB)值声明为常量，能帮助后来的代码维护人员了解值的意图。如果将来需要修改硬编码值，也只需修改汇聚于一处的硬编码值。
+    //将遍布于应用程序中的硬编码(直接编译成二进制于可执行文件中)（可以理解为常量是硬编码的）值声明为常量，能帮助后来的代码维护人员了解值的意图。如果将来需要修改硬编码值，也只需修改汇聚于一处的硬编码值。
     println!("The value of x is: {THREE_HOURS_IN_SECONDS}");
 
     //隐藏（Shadowing）
