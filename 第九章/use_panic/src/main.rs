@@ -2,7 +2,7 @@
  * @Author: wulongjiang
  * @Date: 2022-12-11 11:57:46
  * @LastEditors: wulongjiang
- * @LastEditTime: 2022-12-11 17:29:48
+ * @LastEditTime: 2022-12-11 19:42:02
  * @Description:用panic！处理不可恢复的错误
  * @see：https://kaisery.github.io/trpl-zh-cn/ch09-01-unrecoverable-errors-with-panic.html
  * @FilePath: \rust_study\第九章\use_panic\src\main.rs
@@ -26,7 +26,7 @@ fn main() {
     let v = vec![1, 2, 3];
     v[99]; //报错thread 'main' panicked at 'index out of bounds: the len is 3 but the index is 99', src\main.rs:27:5
            //note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace 这里提示我们可以设置RUST_BACKTRACE环境变量来得到一个回溯
-           //windows 系统 可以先允许 set RUST_BACKTRACE=1 来设置环境 然后再允许cargo run
+           //windows 系统 可以先允许 set RUST_BACKTRACE=1 来设置环境 然后再允许cargo run 这样我们就可以看到回溯了
 
     //访问超越数据结构的元素是十分危险的。 这会造成panic！
     //C语言中，尝试读取数据结构之后的值是未定义行为(undefined behavior)。你会得到任何对应数据结构中的这个元素的内存位置的值，
