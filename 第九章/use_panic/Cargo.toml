@@ -1,0 +1,12 @@
+[package]
+name = "use_panic"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+# 在release模式中panic时直接终止 可以减少二进制文件的大小
+[profile.release]
+panic = "abort"
