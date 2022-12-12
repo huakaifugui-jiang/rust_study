@@ -1,8 +1,8 @@
 /*
  * @Author: wulongjiang
  * @Date: 2022-12-11 17:33:36
- * @LastEditors: wulongjiang
- * @LastEditTime: 2022-12-11 20:13:57
+ * @LastEditors: wlj
+ * @LastEditTime: 2022-12-12 09:13:40
  * @Description:用Result处理可恢复的错误
  * @see：https://kaisery.github.io/trpl-zh-cn/ch09-02-recoverable-errors-with-result.html
  * @FilePath: \use_result\src\main.rs
@@ -19,8 +19,10 @@
 
 //T和E是泛型类型参数；第十章会详细介绍泛型。现在你需要知道的就是T代表成功时返回的Ok成员中的数据类型
 //而E代表失败时返回的Err成员中的错误的类型。 因为Result由这些泛型类型参数，我我们可以将 Result 类型和标准库中为其定义的函数用于很多不同的场景，这些情况中需要返回的成功值和失败值可能会各不相同。
+use std::fs;
 use std::fs::File;
 use std::io::ErrorKind;
+use std::io::{self, Read};
 fn learn_result() {
     //我们如何知道File::open返回的是什么类型呢？
     //1.我们可以查看标准库API文档https://doc.rust-lang.org/std/index.html
@@ -72,10 +74,62 @@ fn learn_unwrap() {
 }
 
 //传播错误
-fn read_username_from_file() {}
+//当编写一个其实先会调用一些可能会失败的操作的函数时，除了在这个函数中处理错误外，还可以选择让调用者知道这个错误并决定该如何处理。
+//这被称为传播（propagating）错误，这样能更好的控制代码调用，因为比起你代码拥有的上下文，调用者可能拥有更多信息或逻辑来决定该如何处理错误。
+
+//从一个文件中读取用户名的函数，如果文件不存在或不能读取，这个函数将会将这些错误返回给调用它的代码
+//如果成功 函数调用者会受到一个包含String的Ok值--函数从文件中读取到的用户名。
+//如果函数遇到任何错误，函数调用者会受到一个Err值，它存储了io::Error实例。
+fn read_username_from_file() -> Result<String, io::Error> {
+    // let f = File::open("hello.txt");
+
+    // let mut f = match f {
+    //     Ok(file) => file,
+    //     Err(e) => return Err(e), //如果调用失败就返回Err 结束整个函数。
+    // };
+
+    // let mut s = String::new();
+
+    // match f.read_to_string(&mut s) { //返回这个表达式
+    //     Ok(_) => Ok(s),//如果成功了就 表达式就等于s
+    //     Err(e) => Err(e),
+    // }
+
+    //传播错误的简写  ? 运算符
+    // let mut f = File::open("hello.txt")?; // ? 运算符与上面的match表达式有着相同的工作方式。如果Result的值是ok，这个表达式就返回Ok中的值而函数继续执行。如果值是Err，Err中的值将作为整个函数的返回值，就好像使用了return关键字一样
+    // let mut s = String::new();
+    // f.read_to_string(&mut s)?;
+    // Ok(s)
+    //?运算符 与 match表达式不同的是，？运算符所使用的的错误值被传递给了 from函数，它定义于标准库的From trait中，用来将错误从一种类型转为另一种类型。
+    //当 ? 运算符调用 from 函数时，收到的错误类型被转换为由当前函数返回类型所指定的错误类型。
+
+    //？的链式调用
+    let mut s = String::new();
+    File::open("hello.txt")?.read_to_string(&mut s)?;
+    Ok(s)
+
+    //更加简短的写法
+    // fs::read_to_string("hello.txt")
+}
+
+//哪里可以使用？运算符
+//？运算符只能用于返回值与？作用的值相兼容的函数 一般返回值是Option 或者 Result
+
+//一个从给定文本中返回第一行的最后一个字符的函数
+fn last_char_of_first_line(text: &str) -> Option<char> {
+    //这个函数返回一个Option<char> 因为它要么有char要么没有
+    text.lines().next()?.chars().last()//首先调用lines方法返回一个字符串中每一行的迭代器，因为函数希望检查第一行所以调用了迭代器next()来获取迭代器的第一个值
+    //如果text是空字符串 next会返回None，此时我们可以用？来停止并返回None如果不是就 ？会提取这个字符串slice，所以接着调用chars来获取字符的迭代器。
+    //因为我们需要最后一项，所以我们可以使用last来返回迭代器的最后一项。这是一个Option
+}
 
 fn main() {
     // learn_result();
     // learn_unwrap();
-    read_username_from_file()
+    let result = read_username_from_file();
+
+    let result = match result {
+        Ok(s) => println!("{}", s),
+        Err(_) => panic!("错误"),
+    };
 }
