@@ -1,8 +1,10 @@
+use std::fmt::Display;
+
 /*
  * @Author: wulongjiang
  * @Date: 2022-12-12 22:47:39
  * @LastEditors: wulongjiang
- * @LastEditTime: 2022-12-12 22:55:30
+ * @LastEditTime: 2022-12-13 20:36:07
  * @Description:
  * @FilePath: \traits\src\aggregator.rs
  */
@@ -56,4 +58,54 @@ impl Summary for Tweet {
     fn summarize(&self) -> String {
         format!("{}: {}", self.username, self.content)
     }
+}
+
+//trait作为参数
+//知道了如何定义trait和在类型上实现这些trait后，我们可以探索一下如何使用trait来接受多种不同类型的参数。
+
+//例如我们为NewsArticle和Tweet类型实现了Summarytrait。我们可以定义一个函数notify来调用其参数item上的summarize方法，
+//该参数是实现了Summary trait 的某种类型。为此可以使用 impl Trait语法
+// pub fn notify(item: &impl Summary) {
+//     println!("Breaking news! {}", item.summarize());
+// }
+//我们可以传递任何 NewsArticle 或 Tweet 的实例来调用 notify。任何用其它如 String 或 i32 的类型调用该函数的代码都不能编译，因为它们没有实现 Summary。
+
+//trait bound（特征约束 我翻译为）语法  它实际上是一种较长形式语法的语法糖
+pub fn notify<T: Summary>(item1: &T, item2: &T) {
+    println!("Breaking news! {}", item1.summarize());
+}
+
+//通过 + 指定 多个trait bound
+// pub fn notify<T: Summary + Display>(item: &T) {}
+
+//通过where简化trait bound
+// fn some_function<T: Display + Clone, U: Clone + Debug>(t: &T, u: &U) -> i32 {
+
+//简化后
+//     fn some_function<T, U>(t: &T, u: &U) -> i32
+//     where T: Display + Clone,
+//           U: Clone + Debug
+// {
+
+//也可以在返回值中使用 impl Trait 语法，来返回实现了某个 trait 的类型
+//有限制 只能返回一个 实现了trait的类型
+fn returns_summarizable() -> impl Summary {
+    // if switch {
+    NewsArticle {
+        headline: String::from("Penguins win the Stanley Cup Championship!"),
+        location: String::from("Pittsburgh, PA, USA"),
+        author: String::from("Iceburgh"),
+        content: String::from(
+            "The Pittsburgh Penguins once again are the best \
+                 hockey team in the NHL.",
+        ),
+    }
+    // } else {
+    //     Tweet {
+    //         username: String::from("horse_ebooks"),
+    //         content: String::from("of course, as you probably already know, people"),
+    //         reply: false,
+    //         retweet: false,
+    //     }
+    // }
 }

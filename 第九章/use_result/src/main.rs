@@ -1,11 +1,11 @@
 /*
  * @Author: wulongjiang
  * @Date: 2022-12-11 17:33:36
- * @LastEditors: wlj
- * @LastEditTime: 2022-12-12 09:13:40
+ * @LastEditors: wulongjiang
+ * @LastEditTime: 2022-12-13 20:43:31
  * @Description:用Result处理可恢复的错误
  * @see：https://kaisery.github.io/trpl-zh-cn/ch09-02-recoverable-errors-with-result.html
- * @FilePath: \use_result\src\main.rs
+ * @FilePath: \rust_study\第九章\use_result\src\main.rs
  */
 
 //  大部分错误并没有严重到需要程序完全停止执行。有时，一个函数会因为一个容易理解并做出反应的原因失败。
@@ -118,9 +118,9 @@ fn read_username_from_file() -> Result<String, io::Error> {
 //一个从给定文本中返回第一行的最后一个字符的函数
 fn last_char_of_first_line(text: &str) -> Option<char> {
     //这个函数返回一个Option<char> 因为它要么有char要么没有
-    text.lines().next()?.chars().last()//首先调用lines方法返回一个字符串中每一行的迭代器，因为函数希望检查第一行所以调用了迭代器next()来获取迭代器的第一个值
-    //如果text是空字符串 next会返回None，此时我们可以用？来停止并返回None如果不是就 ？会提取这个字符串slice，所以接着调用chars来获取字符的迭代器。
-    //因为我们需要最后一项，所以我们可以使用last来返回迭代器的最后一项。这是一个Option
+    text.lines().next()?.chars().last() //首先调用lines方法返回一个字符串中每一行的迭代器，因为函数希望检查第一行所以调用了迭代器next()来获取迭代器的第一个值
+                                        //如果text是空字符串 next会返回None，此时我们可以用？来停止并返回None如果不是就 ？会提取这个字符串slice，所以接着调用chars来获取字符的迭代器。
+                                        //因为我们需要最后一项，所以我们可以使用last来返回迭代器的最后一项。这是一个Option
 }
 
 fn main() {

@@ -2,7 +2,7 @@
  * @Author: wlj
  * @Date: 2022-12-12 09:48:27
  * @LastEditors: wulongjiang
- * @LastEditTime: 2022-12-12 20:52:54
+ * @LastEditTime: 2022-12-13 20:40:33
  * @Description: 泛型数据类型
  * @see:https://kaisery.github.io/trpl-zh-cn/ch10-01-syntax.html
  */
@@ -102,16 +102,18 @@ fn largest_char(list: &[char]) -> char {
 }
 
 //泛型版 寻找最大数 Rust类型的命名规范是骆驼命名法（CamelCase）T 作为 “type” 的缩写是大部分 Rust 程序员的首选。
-// fn largest<T>(list: &[T]) -> T {
-//     //函数largest 有泛型T。它有个参数list，其类型是元素为T的slice，largest函数的返回值类型也是T
-//     let mut largest = list[0];
 
-//     for &item in list {
-//         if item > largest {
-//             //此时会报错因为largest不能适用于T的所有可能的类型，需要比较T类型的值 标准库中定义的 std::cmp::PartialOrd trait 可以实现类型的比较功能。
-//             largest = item;
-//         }
-//     }
+//通过trait bounds来修复 报错 10.2小节
+fn largest<T: PartialOrd + Copy>(list: &[T]) -> T {
+    //函数largest 有泛型T。它有个参数list，其类型是元素为T的slice，largest函数的返回值类型也是T
+    let mut largest = list[0];
 
-//     largest
-// }
+    for &item in list {
+        if item > largest {
+            //此时会报错因为largest不能适用于T的所有可能的类型，需要比较T类型的值 标准库中定义的 std::cmp::PartialOrd trait 可以实现类型的比较功能。
+            largest = item;
+        }
+    }
+
+    largest
+}
