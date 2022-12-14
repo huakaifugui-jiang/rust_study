@@ -1,8 +1,8 @@
 /*
  * @Author: wulongjiang
  * @Date: 2022-12-13 21:02:18
- * @LastEditors: wulongjiang
- * @LastEditTime: 2022-12-13 23:26:13
+ * @LastEditors: wlj
+ * @LastEditTime: 2022-12-14 17:11:04
  * @Description:生命周期确保引用有效
  * @see:https://kaisery.github.io/trpl-zh-cn/ch10-03-lifetime-syntax.html
  * @FilePath: \lifetime\src\main.rs
@@ -11,6 +11,38 @@
 //Rust的每一个引用都有其生命周期（lifetime），也就是引用保持有效的作用域。
 //大部分时候生命周期都是隐含的  编译器可以推断的，正如大部分类型一样也是可以推断的。
 //似于当因为有多种可能类型的时候必须注明类型，也会出现引用的生命周期以一些不同方式相关联的情况，所以 Rust 需要我们使用泛型生命周期参数来注明他们的关系，这样就能确保运行时实际使用的引用绝对是有效的。
+
+//结构体定义中的生命周期注解
+//目前为止，我们只定义过有所有权类型的结构体。接下来。我们将定义包含引用的结构体，不过这需要为结构体定义中的每一个引用添加生命周期注解
+//如下是一个存放了一个字符串slice的结构体ImportantExcerpt。
+//这个结构体有个字段，part，它存放了一个字符串slice，这是一个引用。类似于泛型参数类型，必须再结构体名称后面的尖括号中声明泛型生命周期参数，
+//以便再结构体定义中使用生命周期参数。这个注解意味着 ImportantExcerpt 的实例不能比其part字段中的引用存在的更久。
+struct ImportantExcerpt<'a> {
+    part: &'a str,
+}
+
+fn learn_struct_lifetime() {
+    let novel = String::from("Call me Ishmael. Some years ago ...");
+    let first_sentence = novel.split(".").next().expect("Could not find a '.' ");
+    let i = ImportantExcerpt {
+        //创建了一个实例
+        part: first_sentence, //存放了变量novel字符串的第一个句子的引用 ，novel在 实例创建之前就已经存在，另外,直到ImportantExcerpt 离开作用域之后 novel 都不会离开作用域，所以 ImportantExcerpt 实例中的引用是有效的。
+    };
+}
+
+//方法定义中的生命周期注解
+//当为带有生命周期的结构体实现方法时，其语法依然类似于泛型类型参数的语法。声明和使用生命周期参数的位置依赖于生命周期参数是否同结构体字段或方法参数和返回值相关
+
+impl<'a> ImportantExcerpt<'a> {
+    fn level(&self) -> i32 {
+        3
+    }
+    fn announce_and_return_part(&self, announcement: &str) -> &str {
+        println!("Attention please: {}", announcement);
+        self.part
+    } //适用于第三条规则
+}
+
 
 fn main() {
     //生命周期的主要目标是避免悬垂引用
@@ -56,12 +88,17 @@ fn main() {
     let result;
     {
         // let string2 = String::from("xyz");
-        let string2 = "123"; //疑惑 为什么 这个不报错？？？
+        let string2 = "123"; //疑惑 为什么 这个不报错？？？ 因为他是'static
 
         result = longest(string1.as_str(), string2); //此时就会报错//borrowed value does not live long enough 因为result的引用比返回的长，返回的是最短的
     }
     println!("The longest string is {}", result);
+    learn_struct_lifetime();
 
+    //静态生命周期：能够存活于整个程序期间
+    //这里有一种特殊的生命周期值得讨论'static，其生命周期能够存活于整个程序期间。所有的字符串字面量都拥有'static生命周期
+    let static_str: &'static str = "I have a static lifetime.";
+    //这个字符串的文本被直接储存在程序的二进制文件中而这个文件总是可用的。因此所有的字符串字面值都是 'static 的。
 }
 
 // fn longest(x: &str, y: &str) -> &str {
@@ -109,3 +146,49 @@ fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
         y
     }
 }
+
+//生命周期省略（Lifetime Elision）
+//现在我们知道了每一个引用都有一个生命周期，而且我们需要为那些使用了引用的函数或者结构体指定生命周期。
+//但是像有一些函数 它的返回值是引用但是却不用谢生命周期注解
+fn first_word(s: &str) -> &str {
+    let bytes = s.as_bytes();
+
+    for (i, &item) in bytes.iter().enumerate() {
+        if item == b' ' {
+            return &s[0..i];
+        }
+    }
+
+    &s[..]
+}
+// 在早期版本（pre-1.0）的 Rust 中，这的确是不能编译的。每一个引用都必须有明确的生命周期。那时的函数签名将会写成这样：
+//fn first_word<'a>(s: &'a str) -> &'a str {
+
+//在编写了很多 Rust 代码后，Rust 团队发现在特定情况下 Rust 程序员们总是重复地编写一模一样的生命周期注解。这些场景是可预测的并且遵循几个明确的模式。
+//接着 Rust 团队就把这些模式编码进了 Rust 编译器中，如此借用检查器在这些情况下就能推断出生命周期而不再强制程序员显式的增加注解。
+
+//被编码进 Rust 引用分析的模式被称为 生命周期省略规则（lifetime elision rules）。
+//这并不是需要程序员遵守的规则；这些规则是一系列特定的场景，此时编译器会考虑，如果代码符合这些场景，就无需明确指定生命周期。
+
+//如果 Rust 在明确遵守这些规则的前提下变量的生命周期仍然是模棱两可的话，它不会猜测剩余引用的生命周期应该是什么。
+//在这种情况(就上上面的longest函数)，编译器会给出一个错误，这可以通过增加对应引用之间相联系的生命周期注解来解决
+
+//函数或方法的参数的生命周期被称为输入生命周期（input lifetimes），而返回值的生命周期被称为 输出生命周期（output lifetimes）
+//编译器采用三条规则来判断引用何时不需要明确的注解第一条规则适用于输入生命周期，后两条规则适用于输出生命周期。
+//如果编译器检查完这三条规则后仍然存在没有计算出生命周期的引用，编译器将会停止并生成错误。这些规则适用于 fn 定义，以及 impl 块。
+
+// 第一条规则是每一个是引用的参数都有它自己的生命周期参数。换句话说就是，有一个引用参数的函数有一个生命周期参数：fn foo<'a>(x: &'a i32)，
+// 有两个引用参数的函数有两个不同的生命周期参数，fn foo<'a, 'b>(x: &'a i32, y: &'b i32)，依此类推。
+
+//第二条规则是如果只有一个输入生命周期参数，那么它被赋予所有输出生命周期参数：fn foo<'a>(x: &'a i32) -> &'a i32。
+
+//第三条规则是如果方法有多个输入生命周期参数并且其中一个参数是 &self 或 &mut self，说明是个对象的方法(method)(译者注： 这里涉及rust的面向对象参见17章)，
+//那么所有输出生命周期参数被赋予 self 的生命周期。第三条规则使得方法更容易读写，因为只需更少的符号。
+
+//按照上面三条规则判断一下first_word方法
+// 第一条规则 fn first_word(s: &'a str) -> &str { 每一个输入生命周期都有自己的生命周期
+
+//第二条规则 如果只有一个输入生命周期函数 就是s参数 那么他就被赋予给所有的输出生命周期参数
+//fn first_word(s:&'a str) -> &'a str { 这就可以推断出所有的引用的生命周期了 如此编译器可以继续它的分析而无须程序员标记这个函数签名中的生命周期。
+//再看看 longest 它并符合第二天规则 （只有一个输入生命周期函数） 也不符合第三天 只符合第一条
+//fn longest<'a, 'b>(x: &'a str, y: &'b str) -> &str { 所以编译器只能推断出这样 此时输出生命周期参数 并不确定所以需要标注
