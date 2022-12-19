@@ -1,0 +1,10 @@
+[package]
+name = "adder"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# 现在工作空间中有了一个库 crate，让 adder 依赖库 crate add_one。首先需要在 adder/Cargo.toml 文件中增加 add_one 作为路径依赖：
+[dependencies]
+add_one = { path = "../add_one" }

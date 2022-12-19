@@ -1,0 +1,54 @@
+# 第十二章中，我们构建一个包含二进制 crate 和库 crate 的包。你可能会发现，随着项目开发的深入，库 crate 持续增大，而你希望将其进一步拆分成多个库 crate。
+# 对于这种情况，Cargo 提供了一个叫 工作空间（workspaces）的功能，它可以帮助我们管理多个相关的协同开发的包。
+
+# 创建工作空间
+# 工作空间 是一系列共享同样的 Cargo.lock 和输出目录的包。
+# 它不会包含 [package] 或其他我们在 Cargo.toml 中见过的元信息。
+# 相反，它以 [workspace] 部分作为开始，并通过指定 adder 的路径来为工作空间增加成员，如下会加入二进制 crate
+# 到此为止，可以运行 cargo build 来构建工作空间
+# ├── adder
+# │   ├── Cargo.toml
+# │   └── src
+# │       └── main.rs
+# └── target
+# ├── Cargo.lock
+# ├── Cargo.toml
+# 工作空间在顶级目录有一个 target 目录；adder 并没有自己的 target 目录。即使进入 adder 目录运行 cargo build，构建结果也位于 ~/target 而不是 ~/adder/target。
+# 工作空间中的 crate 之间相互依赖。如果每个 crate 有其自己的 target 目录，为了在自己的 target 目录中生成构建结果，工作空间中的每一个 crate 都不得不相互重新编译其他 crate
+# 通过共享一个 target 目录，工作空间可以避免其他 crate 多余的重复构建。
+
+# 在工作空间中创建第二个包
+
+# 接下来，让我们在工作空间中指定另一个成员 crate。这个 crate 位于 add_one 目录中，所以修改顶级 Cargo.toml 为也包含 add_one 路径
+# 现在 add 目录应该有如下目录和文件：
+# ├── Cargo.lock
+# ├── Cargo.toml
+# ├── add_one
+# │   ├── Cargo.toml
+# │   └── src
+# │       └── lib.rs
+# ├── adder
+# │   ├── Cargo.toml
+# │   └── src
+# │       └── main.rs
+# └── target
+
+# 接下来，在 adder crate 中使用 add_one crate 的函数 add_one。打开 adder/src/main.rs 在顶部增加一行 use 将新 add_one 库 crate 引入作用域。接着修改 main 函数来调用 add_one 函数
+# 接着在 add 目录中运行 cargo build 来构建工作空间！
+# 为了在顶层 add 目录运行二进制 crate，可以通过 -p 参数和包名称来运行 cargo run 指定工作空间中我们希望使用的包：
+# cargo run -p adder
+
+# 在工作空间中依赖外部包
+# 还需注意的是工作空间只在根目录有一个 Cargo.lock，而不是在每一个 crate 目录都有 Cargo.lock。
+# 这确保了所有的 crate 都使用完全相同版本的依赖。如果在 Cargo.toml 和 add_one/Cargo.toml 中都增加 rand crate，则 Cargo 会将其都解析为同一版本并记录到唯一的 Cargo.lock 中
+# 使得工作空间中的所有 crate 都使用相同的依赖意味着其中的 crate 都是相互兼容的
+# 让我们在 add_one/Cargo.toml 中的 [dependencies] 部分增加 rand crate 以便能够在 add_one crate 中使用 rand crate
+# 接着在 add 目录运行 cargo build 构建整个工作空间就会引入并编译 rand crate
+# 现在顶级的 Cargo.lock 包含了 add_one 的 rand 依赖的信息。然而，即使 rand 被用于工作空间的某处，也不能在其他 crate 中使用它
+# ，除非也在他们的 Cargo.toml 中加入 rand。例如，如果在顶级的 adder crate 的 adder/src/main.rs 中增加 use rand;，会得到一个错误
+# 为了修复这个错误，修改顶级 adder crate 的 Cargo.toml 来表明 rand 也是这个 crate 的依赖。构建 adder crate 会将 rand 加入到 Cargo.lock 中 adder 的依赖列表中，但是这并不会下载 rand 的额外拷贝
+# Cargo 确保了工作空间中任何使用 rand 的 crate 都采用相同的版本。在整个工作空间中使用相同版本的 rand 节省了空间，因为这样就无需多个拷贝并确保了工作空间中的 crate 将是相互兼容的
+
+[workspace]
+
+members = ["adder", "add_one"]
