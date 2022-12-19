@@ -1,8 +1,8 @@
 /*
  * @Author: wlj
  * @Date: 2022-12-19 16:07:02
- * @LastEditors: wlj
- * @LastEditTime: 2022-12-19 17:37:41
+ * @LastEditors: wulongjiang
+ * @LastEditTime: 2022-12-19 23:27:08
  * @Description:使用Box<T>指向堆上的数据
  * @see:https://kaisery.github.io/trpl-zh-cn/ch15-01-box.html#%E4%BD%BF%E7%94%A8boxt%E6%8C%87%E5%90%91%E5%A0%86%E4%B8%8A%E7%9A%84%E6%95%B0%E6%8D%AE
  */
@@ -17,7 +17,41 @@
 //我们会在 “box 允许创建递归类型” 部分展示第一种场景。
 //在第二种情况中，转移大量数据的所有权可能会花费很长的时间，因为数据在栈上进行了拷贝。为了改善这种情况下的性能，可以通过 box 将这些数据储存在堆上，接着，只有少量的指针数据在栈上被拷贝。
 //第三种情况被称为 trait 对象（trait object），第十七章刚好有一整个部分 “顾及不同类型值的 trait 对象” 专门讲解这个主题。所以这里所学的内容会在第十七章再次用上！
+//如下包含一个 cons list 的枚举定义。
+enum List {
+    //recursive type has infinite size报错  这个错误表明这个类型 “有无限的大小”。
+    //其原因是 List 的一个成员被定义为是递归的：它直接存放了另一个相同类型的值。这意味着 Rust 无法计算为了存放 List 值到底需要多少空间。
+    //首先了解一下 Rust 如何决定需要多少空间来存放一个非递归类型
+    // 例如
+    // enum Message {
+    //     Quit,
+    //     Move { x: i32, y: i32 },
+    //     Write(String),
+    //     ChangeColor(i32, i32, i32),
+    // }
+    // 当 Rust 需要知道要为 Message 值分配多少空间时，它可以检查每一个成员并发现 Message::Quit 并不需要任何空间，
+    // Message::Move 需要足够储存两个 i32 值的空间，依此类推。
+    // 因为 enum 实际上只会使用其中的一个成员，所以 Message 值所需的空间等于储存其最大成员的空间大小。
 
+    //那递归呢？
+    //编译器尝试计算出储存一个 List 枚举需要多少内存，并开始检查 Cons 成员，那么 Cons 需要的空间等于 i32 的大小加上 List 的大小。为了计算 List 需要多少内存，
+    //它检查其成员，从 Cons 成员开始。Cons成员储存了一个 i32 值和一个List值，这样的计算将无限进行下去
+    //Rust 无法计算出要为定义为递归的类型分配多少空间，所以编译器给出了错误。
+    //我们可以看一下报错的help： insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `List` representable 插入一些间接的(例如，' Box '， ' Rc '，或' & ')，使' List '可以被描绘
+    //因为 Box<T> 是一个指针，我们总是知道它需要多少空间：指针的大小并不会根据其指向的数据量而改变
+    //这意味着可以将 Box 放入 Cons 成员中而不是直接存放另一个 List 值。Box 会指向另一个位于堆上的 List 值,而不是存放在 Cons 成员中。
+    //从概念上讲，我们仍然有一个通过在其中 “存放” 其他列表创建的列表，不过现在实现这个概念的方式更像是一个项挨着另一项，而不是一项包含另一项。
+    Cons(i32, Box<List>), //Cons 成员将会需要一个 i32 的大小加上储存 box 指针数据的空间。
+    Nil,                  //Nil 成员不储存值，所以它比 Cons 成员需要更少的空间。
+                          //现在我们知道了任何 List 值最多需要一个 i32 加上 box 指针数据的大小。
+                          //通过使用 box ，打破了这无限递归的连锁，这样编译器就能够计算出储存 List 值需要的大小了。
+
+                          //box 只提供了间接存储和堆分配；他们并没有任何其他特殊的功能，比如我们将会见到的其他智能指针。
+                          //它们也没有这些特殊功能带来的性能损失，所以他们可以用于像 cons list 这样间接存储是唯一所需功能的场景。我们还将在第十七章看到 box 的更多应用场景。
+                          //Box<T> 类型是一个智能指针，因为它实现了 Deref trait，它允许 Box<T> 值被当作引用对待。
+                          //当 Box<T> 值离开作用域时，由于 Box<T> 类型 Drop trait 的实现，box 所指向的堆数据也会被清除。
+}
+use crate::List::{Cons, Nil};
 fn main() {
     //使用Box<T>在堆上存储数据
     let b = Box::new(5); //用box在堆上存储一个i32
@@ -43,9 +77,9 @@ fn main() {
     //注意虽然函数式编程语言经常使用 cons list，但是它并不是一个 Rust 中常见的类型。大部分在 Rust 中需要列表的时候，Vec<T> 是一个更好的选择。
     //其他更为复杂的递归数据类型 确实 在 Rust 的很多场景中很有用，不过通过以 cons list 作为开始，我们可以探索如何使用 box 毫不费力的定义一个递归数据类型。
 
-    //如下包含一个 cons list 的枚举定义。
-    enum List {
-        Cons(i32, List),
-        Nil,
-    }
+    //出于示例的需要我们选择实现一个只存放 i32 值的 cons list。
+    //使用这个 cons list 来储存列表 1, 2, 3
+    // let list = Cons(1, Cons(2, Cons(3, Nil)));
+    //第一个 Cons 储存了 1 和另一个 List 值。这个 List 是另一个包含 2 的 Cons 值和下一个 List 值。接着又有另一个存放了 3 的 Cons 值和最后一个值为 Nil 的 List，非递归成员代表了列表的结尾。
+    let list = Cons(1, Box::new(Cons(2, Box::new(Cons(3, Box::new(Nil))))));
 }
