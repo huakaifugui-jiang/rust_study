@@ -1,8 +1,8 @@
 /*
  * @Author: wulongjiang
  * @Date: 2022-12-15 20:43:45
- * @LastEditors: wulongjiang
- * @LastEditTime: 2022-12-15 22:55:16
+ * @LastEditors: wlj
+ * @LastEditTime: 2022-12-19 08:31:07
  * @Description: 第十二章
  * @FilePath: \minigrep\src\main.rs
  */
@@ -20,8 +20,9 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     println!("{:?}", args); //Vector的第一个值是"target\\debug\\minigrep.exe",它是我们二进制文件的名称 这与 C 中的参数列表的行为相匹配，让程序使用在执行时调用它们的名称
                             //如果要在消息中打印它或者根据用于调用程序的命令行别名更改程序的行为，通常可以方便地访问程序名称 (给命令取一个比较短的名字的意思)
-                            //使用 unwrap_or_else 可以进行一些自定义的非 panic! 的错误处理。当 Result 是 Ok 时，这个方法的行为类似于 unwrap：它返回 Ok 内部封装的值。然而，当其值是 Err 时，该方法会调用一个 闭包（closure）
-    let config = Config::new(&args).unwrap_or_else(|err| {
+
+    //改进：我们可以将 new 函数改为获取一个有所有权的迭代器作为参数而不是借用 slice env::args 函数返回一个迭代器！
+    let config = Config::new(env::args()).unwrap_or_else(|err| {
         eprintln!("Problem parsing arguments :{}", err);
         process::exit(1); //如果新建Config失败则使用错误码退出 process::exit 会立即停止程序并将传递给它的数字作为退出状态码。
     });

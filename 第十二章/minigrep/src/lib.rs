@@ -1,12 +1,16 @@
 /*
  * @Author: wulongjiang
  * @Date: 2022-12-15 21:52:02
- * @LastEditors: wulongjiang
- * @LastEditTime: 2022-12-15 22:46:44
+ * @LastEditors: wlj
+ * @LastEditTime: 2022-12-19 08:43:15
  * @Description:
  * @FilePath: \minigrep\src\lib.rs
  */
-use std::{env, error::Error, fs};
+use std::{
+    env::{self},
+    error::Error,
+    fs,
+};
 //目前只需知道 Box<dyn Error> 意味着函数会返回实现了 Error trait 的类型，不过无需指定具体将会返回的值的类型
 //这提供了在不同的错误场景可能有不同类型的错误返回值的灵活性。这也就是 dyn，它是 “动态的”（“dynamic”）的缩写
 pub struct Config {
@@ -16,13 +20,20 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new(args: &[String]) -> Result<Config, &'static str> {
+    pub fn new(mut args: env::Args) -> Result<Config, &'static str> {
         if args.len() < 3 {
             return Err("not enough arguments");
         }
 
-        let query = args[1].clone();
-        let filename = args[2].clone();
+        let query = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get a query string"),
+        };
+        let filename = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get a file name"),
+        };
+
         //这里创建了一个新变量 case_sensitive。为了设置它的值，需要调用 env::var 函数并传递我们需要寻找的环境变量名称
         //env::var 返回一个 Result，它在环境变量被设置时返回包含其值的 Ok 成员，并在环境变量未被设置时返回 Err 成员
         let case_sensitive = env::var("CASE_INSENSITIVE").is_err(); //我们使用 Result 的 is_err 方法来检查其是否是一个 error（也就是环境变量未被设置的情况）
@@ -60,14 +71,22 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 // 如果没有，什么也不做。
 // 返回匹配到的结果列表
 pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-    let mut results = Vec::new();
-    //lines 方法返回一个迭代器。
-    for line in contents.lines() {
-        if line.contains(query) {
-            results.push(line);
-        }
-    }
-    results
+    // let mut results = Vec::new();
+    // //lines 方法返回一个迭代器。
+    // for line in contents.lines() {
+    //     if compile_error!() {
+    //         results.push(line);
+    //     }
+    // }
+    // results
+
+    //改进 闭包加迭代器  迭代器的性能要高于for循环版本
+    //迭代器，作为一个高级的抽象，被编译成了与手写的底层代码大体一致性能代码
+    //迭代器是 Rust 的 零成本抽象（zero-cost abstractions）之一，它意味着抽象并不会引入运行时开销，它与本贾尼·斯特劳斯特卢普（C++ 的设计和实现者）在 “Foundations of C++”（2012） 中所定义的 零开销（zero-overhead）如出一辙
+    contents
+        .lines()
+        .filter(|line| line.contains(query))
+        .collect()
 }
 
 pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
