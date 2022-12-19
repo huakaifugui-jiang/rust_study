@@ -1,0 +1,21 @@
+[package]
+name = "release_prifiles"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+#例如，如下是 dev 和 release 配置的 opt-level 设置的默认值：
+# opt-level 设置控制Rust 会对代码进行何种程度的优化。这个配置的值从0到3.越高的优化级别需要的更多的时间编译
+# 所以如果你在进行开发并经常编译，可能会希望在牺牲一些代码性能的情况下编译得快一些。这就是为什么 dev 的 opt-level 默认为 0。
+# 当你准备发布时，花费更多时间在编译上则更好。只需要在发布模式编译一次，而编译出来的程序则会运行很多次，所以发布模式用更长的编译时间换取运行更快的代码。
+# 这正是为什么 release 配置的 opt-level 默认为 3。
+# 对于每个配置的设置和其默认值的完整列表，请查看 Cargo 的文档。
+# https://doc.rust-lang.org/cargo/reference/profiles.html
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3
