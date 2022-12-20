@@ -1,8 +1,8 @@
 /*
  * @Author: wlj
  * @Date: 2022-12-20 16:03:08
- * @LastEditors: wlj
- * @LastEditTime: 2022-12-20 17:37:31
+ * @LastEditors: wulongjiang
+ * @LastEditTime: 2022-12-20 22:27:37
  * @Description: 引用循环与内存泄漏
  * @see:https://kaisery.github.io/trpl-zh-cn/ch15-06-reference-cycles.html
  */
@@ -56,4 +56,19 @@ fn main() {
     // Uncomment the next line to see that we have a cycle;
     // it will overflow the stack
     // println!("a next item = {:?}", a.tail())
+    //创建引用循环并不容易，但也不是不可能。如果你有包含 Rc<T> 的 RefCell<T> 值或类似的嵌套结合了内部可变性和引用计数的类型，请务必小心确保你没有形成一个引用循环；
+    //你无法指望 Rust 帮你捕获它们。创建引用循环是一个程序上的逻辑 bug，你应该使用自动化测试、代码评审和其他软件开发最佳实践来使其最小化。
+
+    //避免引用循环：将 Rc<T> 变为 Weak<T>
+    //到目前为止，我们已经展示了调用 Rc::clone 会增加 Rc<T> 实例的 strong_count，和只在其 strong_count 为 0 时才会被清理的 Rc<T> 实例。
+    //你也可以通过调用 Rc::downgrade 并传递 Rc<T> 实例的引用来创建其值的 弱引用（weak reference）
+    //调用 Rc::downgrade 时会得到 Weak<T> 类型的智能指针。不同于将 Rc<T> 实例的 strong_count 加 1，调用 Rc::downgrade 会将 weak_count 加 1。
+    //Rc<T> 类型使用 weak_count 来记录其存在多少个 Weak<T> 引用，类似于 strong_count。其区别在于 weak_count 无需计数为 0 就能使 Rc<T> 实例被清理。
+    //强引用代表如何共享 Rc<T> 实例的所有权，但弱引用并不属于所有权关系。他们不会造成引用循环，因为任何弱引用的循环会在其相关的强引用计数为 0 时被打断。
+    //因为 Weak<T> 引用的值可能已经被丢弃了，为了使用 Weak<T> 所指向的值，我们必须确保其值仍然有效。
+    //为此可以调用 Weak<T> 实例的 upgrade 方法，这会返回 Option<Rc<T>>。
+    //如果 Rc<T> 值还未被丢弃，则结果是 Some；如果 Rc<T> 已被丢弃，则结果是 None。
+    //因为 upgrade 返回一个 Option<Rc<T>>，Rust 会确保处理 Some 和 None 的情况，所以它不会返回非法指针。
+
+    //创建树形数据结构：带有子节点的 Node
 }
