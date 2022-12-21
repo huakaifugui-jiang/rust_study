@@ -1,8 +1,8 @@
 /*
  * @Author: wlj
  * @Date: 2022-12-20 16:03:08
- * @LastEditors: wulongjiang
- * @LastEditTime: 2022-12-20 22:27:37
+ * @LastEditors: wlj
+ * @LastEditTime: 2022-12-21 09:08:32
  * @Description: 引用循环与内存泄漏
  * @see:https://kaisery.github.io/trpl-zh-cn/ch15-06-reference-cycles.html
  */
@@ -16,8 +16,9 @@
 //让我们看看引用循环是如何发生的以及如何避免它。
 //
 use crate::List::{Cons, Nil};
+use std::borrow::Borrow;
 use std::cell::RefCell;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 #[derive(Debug)]
 enum List {
@@ -71,4 +72,80 @@ fn main() {
     //因为 upgrade 返回一个 Option<Rc<T>>，Rust 会确保处理 Some 和 None 的情况，所以它不会返回非法指针。
 
     //创建树形数据结构：带有子节点的 Node
-}
+    // #[derive(Debug)]
+    // struct Node {
+    //     value: i32,
+    //     children: RefCell<Vec<Rc<Node>>>,
+    // }
+    //我们希望能够 Node 拥有其子节点，同时也希望通过变量来共享所有权，以便可以直接访问树中的每一个 Node，为此 Vec<T> 的项的类型被定义为 Rc<Node>。
+    //我们还希望能修改其他节点的子节点，所以 children 中 Vec<Rc<Node>> 被放进了 RefCell<T>。
+
+    // let leaf = Rc::new(Node {
+    //     value: 3,
+    //     children: RefCell::new(vec![]),
+    // });
+
+    // let branch = Rc::new(Node {
+    //     value: 5,
+    //     children: RefCell::new(vec![Rc::clone(&leaf)]),
+    // });
+    //这里克隆了 leaf 中的 Rc<Node> 并储存在了 branch 中，这意味着 leaf 中的 Node 现在有两个所有者：leaf和branch。
+    //可以通过 branch.children 从 branch 中获得 leaf，不过无法从 leaf 到 branch。leaf 没有到 branch 的引用且并不知道他们相互关联。我们希望 leaf 知道 branch 是其父节点。
+    //为了使子节点知道其父节点，需要在 Node 结构体定义中增加一个 parent 字段。
+    //问题是 parent 的类型应该是什么。我们知道其不能包含 Rc<T>，因为这样 leaf.parent 将会指向 branch 而 branch.children 会包含 leaf 的指针，这会形成引用循环，会造成其 strong_count 永远也不会为 0。
+
+    //现在换一种方式思考这个关系，父节点应该拥有其子节点：如果父节点被丢弃了，其子节点也应该被丢弃。
+    //然而子节点不应该拥有其父节点：如果丢弃子节点，其父节点应该依然存在。这正是弱引用的例子！
+    //所以 parent 使用 Weak<T> 类型而不是 Rc<T>，具体来说是 RefCell<Weak<Node>>。现在 Node 结构体定义看起来像这样：
+    #[derive(Debug)]
+    struct Node {
+        value: i32,
+        parent: RefCell<Weak<Node>>,
+        children: RefCell<Vec<Rc<Node>>>,
+    }
+    let leaf = Rc::new(Node {
+        value: 3,
+        children: RefCell::new(vec![]),
+        parent: RefCell::new(Weak::new()),
+    });
+
+    println!("leaf parent = {:?}", leaf.parent.borrow().upgrade()); //leaf parent = None
+    println!(
+        "leaf strong = {}, weak = {}",
+        Rc::strong_count(&leaf), //1
+        Rc::weak_count(&leaf),   //0
+    );
+
+    {
+        let branch = Rc::new(Node {
+            value: 5,
+            children: RefCell::new(vec![Rc::clone(&leaf)]),
+            parent: RefCell::new(Weak::new()),
+        });
+
+        *leaf.parent.borrow_mut() = Rc::downgrade(&branch); //给leaf的parent 新增一个弱引用
+
+        println!(
+            "branch strong = {}, weak = {}",
+            Rc::strong_count(&branch), //1
+            Rc::weak_count(&branch),   //1 因为leaf的parent用weak 指向了branch
+        );
+
+        println!(
+            "leaf strong = {}, weak = {}",
+            Rc::strong_count(&leaf), //2
+            Rc::weak_count(&leaf),   //0
+        );
+    }//离开作用域 brach的强引用 -1 = 0.所以它的Node被丢弃
+
+    println!("leaf parent = {:?}", leaf.parent.borrow().upgrade()); //leaf parent = Some(Node { value: 5, parent: RefCell { value: (Weak) }, children: RefCell { value: [Node { value: 3, parent: RefCell { value: (Weak) }, children: RefCell { value: [] } }] } })
+                                                                    //当再次打印出 leaf 的父节点时，这一次将会得到存放了 branch 的 Some 值：现在 leaf 可以访问其父节点了！当打印出 leaf 时，我们也避免了最终会导致栈溢出的循环Weak<Node> 引用被打印为 (Weak)
+
+    println!(
+        "leaf strong = {}, weak = {}",
+        Rc::strong_count(&leaf), //1
+        Rc::weak_count(&leaf),   //0
+    );
+    //所有这些管理计数和值的逻辑都内建于 Rc<T> 和 Weak<T> 以及它们的 Drop trait 实现中。
+    //通过在 Node 定义中指定从子节点到父节点的关系为一个Weak<T>引用，就能够拥有父节点和子节点之间的双向引用而不会造成引用循环和内存泄漏。
+} //这里leaf的强引用在减一 所以就不会造成任何的内存泄漏了
