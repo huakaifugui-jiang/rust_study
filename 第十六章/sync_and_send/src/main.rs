@@ -2,7 +2,7 @@
  * @Author: wlj
  * @Date: 2022-12-21 16:15:44
  * @LastEditors: wlj
- * @LastEditTime: 2022-12-21 16:33:38
+ * @LastEditTime: 2022-12-21 16:36:49
  * @Description: 使用 Sync 和 Send trait 的可扩展并发
  * @see:https://kaisery.github.io/trpl-zh-cn/ch16-04-extensible-concurrency-sync-and-send.html
  */
@@ -34,4 +34,5 @@
 //正如之前提到的，因为 Rust 本身很少有处理并发的部分内容，有很多的并发方案都由 crate 实现。他们比标准库要发展的更快；请在网上搜索当前最新的用于多线程场景的 crate。
 //Rust 提供了用于消息传递的信道，和像 Mutex<T> 和 Arc<T> 这样可以安全的用于并发上下文的智能指针。类型系统和借用检查器会确保这些场景中的代码，不会出现数据竞争和无效的引用。
 //一旦代码可以编译了，我们就可以坚信这些代码可以正确的运行于多线程环境，而不会出现其他语言中经常出现的那些难以追踪的 bug。并发编程不再是什么可怕的概念：无所畏惧地并发吧！
+
 fn main() {}
