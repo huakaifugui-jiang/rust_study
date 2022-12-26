@@ -1,8 +1,8 @@
 /*
  * @Author: wlj
  * @Date: 2022-12-26 15:41:15
- * @LastEditors: wlj
- * @LastEditTime: 2022-12-26 17:28:19
+ * @LastEditors: wulongjiang
+ * @LastEditTime: 2022-12-26 21:25:49
  * @Description: 将单线程 server 变为多线程 server
  * @see:https://kaisery.github.io/trpl-zh-cn/ch20-02-multithreaded.html
  */
@@ -13,6 +13,7 @@ use std::net::TcpListener;
 use std::net::TcpStream;
 use std::thread;
 use std::time::Duration;
+use multithreaded::ThreadPool;
 
 //目前server会依次处理每一请求，意味着它在完成第一个连接的处理之前不会处理第二个连接。如果server正接收越来越多的请求，这类串行操作会时性能越来越差。
 //如果一个请求花费很长实际来处理，随后而来的请求则不等不等待这个长请求结束，即使这些请求可以很快就处理完。我们需要修复这种情况，不过首先让我们实际尝试一下这个问题。
@@ -52,6 +53,10 @@ fn main() {
     //报错，报错告诉我们需要一个 ThreadPool 类型或模块，所以我们将构建一个。
     //ThreadPool 的实现会与 web server 的特定工作相独立，所以让我们从 hello crate 切换到存放 ThreadPool 实现的新库 crate。
     //这也意味着可以在任何工作中使用这个单独的线程池库，而不仅仅是处理网络请求。
+    //创建 src/lib.rs 文件，它包含了目前可用的最简单的 ThreadPool 定义：pub struct ThreadPool;
+    //接着创建一个新目录，src/bin，并将二进制 crate 根文件从 src/main.rs 移动到 src/bin/main.rs。这使得库 crate 成为 hello 目录的主要 crate；
+    //不过仍然可以使用 cargo run 运行 src/bin/main.rs 二进制文件。移动了 main.rs 文件之后，修改 src/bin/main.rs 文件开头加入如下代码来引入库 crate 并将 ThreadPool 引入作用域：
+    //use hello::ThreadPool;下一步是为 ThreadPool 创建一个叫做 new 的关联函数。
 }
 
 fn handle_connection(mut stream: TcpStream) {
