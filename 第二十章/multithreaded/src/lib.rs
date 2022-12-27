@@ -1,8 +1,8 @@
 /*
  * @Author: wulongjiang
  * @Date: 2022-12-26 21:22:39
- * @LastEditors: wulongjiang
- * @LastEditTime: 2022-12-26 22:58:17
+ * @LastEditors: wlj
+ * @LastEditTime: 2022-12-27 08:53:56
  * @Description: 线程池库
  * @FilePath: \multithreaded\src\lib.rs
  */
@@ -16,7 +16,7 @@ pub struct ThreadPool {
     //改变了 ThreadPool 的定义来存放一个 thread::JoinHandle<()> 的 vector 实例
     // threads: Vec<thread::JoinHandle<()>>,
     workers: Vec<Worker>,
-    sender: mpsc::Sender<Job>,
+    sender: mpsc::Sender<Message>,
 }
 //首先，让我们做出如此创建 ThreadPool 时所需的修改。
 // 定义 Worker 结构体存放 id 和 JoinHandle<()>
@@ -25,29 +25,49 @@ pub struct ThreadPool {
 // 在 ThreadPool::new 中，使用 for 循环计数生成 id，使用这个 id 新建 Worker，并储存进 vector 中
 struct Worker {
     id: usize,
-    thread: thread::JoinHandle<()>,
+    thread: Option<thread::JoinHandle<()>>,
+}
+
+//信道将发送这个枚举的两个成员之一而不是 Job 实例 为了停机
+enum Message {
+    NewJob(Job),
+    Terminate,
 }
 
 impl Worker {
-    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Job>>>) -> Worker {
+    fn new(id: usize, receiver: Arc<Mutex<mpsc::Receiver<Message>>>) -> Worker {
         Worker {
             id,
-            thread: thread::spawn(move || loop {
-                let job = receiver.lock().unwrap().recv().unwrap();
+            thread: Some(thread::spawn(move || loop {
+                // let job = receiver.lock().unwrap().recv().unwrap();
                 //这里，首先在 receiver 上调用了 lock 来获取互斥器，接着 unwrap 在出现任何错误时 panic。
                 //如果互斥器处于一种叫做 被污染（poisoned）的状态时获取锁可能会失败，这可能发生于其他线程在持有锁时 panic 了且没有释放锁.
                 //在这种情况下，调用 unwrap 使其 panic 是正确的行为。请随意将 unwrap 改为包含有意义错误信息的 expect。
                 //如果锁定了互斥器，接着调用 recv 从信道中接收 Job。
                 //最后的 unwrap 也绕过了一些错误，这可能发生于持有信道发送端的线程停止的情况，类似于如果接收端关闭时 send 方法如何返回 Err 一样。
                 //调用 recv 会阻塞当前线程，所以如果还没有任务，其会等待直到有可用的任务。Mutex<T> 确保一次只有一个 Worker 线程尝试请求任务。
-                println!("Worker {} got a job; executing.", id);
-                job();
+                // println!("Worker {} got a job; executing.", id);
+                // job();
                 //成功了！现在我们有了一个可以异步执行连接的线程池！它绝不会创建超过四个线程，所以当 server 收到大量请求时系统也不会负担过重。
                 //如果请求 /sleep，server 也能够通过另外一个线程处理其他请求。
 
                 //注意如果同时在多个浏览器窗口打开 /sleep，它们可能会彼此间隔地加载 5 秒
                 //，因为一些浏览器处于缓存的原因会顺序执行相同请求的多个实例。这些限制并不是由于我们的 web server 造成的。
-            }),
+
+                //
+                let messgae = receiver.lock().unwrap().recv().unwrap();
+
+                match messgae {
+                    Message::NewJob(job) => {
+                        println!("Worker {} got a job; executing.", id);
+                        job();
+                    }
+                    Message::Terminate => {
+                        println!("Worker {} was told to terminate.", id);
+                        break;
+                    }
+                }
+            })),
         }
     }
 }
@@ -125,11 +145,46 @@ impl ThreadPool {
         F: FnOnce() + Send + 'static, //FnOnce trait仍然需要后面的(),因为这里的FnOnce代表一个没有参数也没有返回值的闭包。正如函数的定义，返回值类型可以从签名中省略，不过即便没有参数也需要括号。
     {
         let job = Box::new(f);
-        self.sender.send(job).unwrap();
+        self.sender.send(Message::NewJob(job)).unwrap();
         //在使用 execute 得到的闭包新建 Job 实例之后，将这些任务从信道的发送端发出。
         //这里调用 send 上的 unwrap，因为发送可能会失败，这可能发生于例如停止了所有线程执行的情况，这意味着接收端停止接收新消息了。
         //不过目前我们无法停止线程执行；只要线程池存在他们就会一直执行。使用 unwrap 是因为我们知道失败不可能发生，即便编译器不这么认为。
         //不过到此事情还没有结束！在 worker 中，传递给 thread::spawn 的闭包仍然还只是 引用 了信道的接收端
         //相反我们需要闭包一直循环，向信道的接收端请求任务，并在得到任务时执行他们。
+    }
+}
+
+//当使用不那么优雅的 ctrl-c 终止主线程时，所有其他线程也会立刻停止，即便它们正处于处理请求的过程中。
+//现在我们要为 ThreadPool 实现 Drop trait 对线程池中的每一个线程调用 join，这样这些线程将会执行完他们的请求
+//接着会为 ThreadPool 实现一个告诉线程他们应该停止接收新请求并结束的方式。
+impl Drop for ThreadPool {
+    fn drop(&mut self) {
+        //向每个 worker 发送一个 Terminate 消息 如果尝试在同一循环中发送消息并立即 join 线程，则无法保证当前迭代的 worker 是从信道收到终止消息的 worker。
+        //为了更好的理解为什么需要两个分开的循环，想象一下只有两个 worker 的场景。如果在一个单独的循环中遍历每个 worker，在第一次迭代中向信道发出终止消息并对第一个 worker 线程调用 join。
+        //如果此时第一个 worker 正忙于处理请求，那么第二个 worker 会收到终止消息并停止。我们会一直等待第一个 worker 结束，不过它永远也不会结束因为第二个线程接收了终止消息。死锁！
+        for _ in &self.workers {
+            self.sender.send(Message::Terminate).unwrap();
+        }
+
+        println!("Shutting down all workers.");
+
+        for worker in &mut self.workers {
+            println!("Shutting down worker {}", worker.id);
+
+            //worker.thread.join().unwrap(); //此时会报错因为join需要的是线程的所有权而不是 可变引用 （所以需要将拿到线程的所有权可以使用Option可以在 Option 上调用 take 方法将值从 Some 成员中移动出来而对 None 成员不做处理。
+            //这里遍历线程中的每个workers。 这里使用了&mut 因为self本身是一个可变引用而且也需要能够修改worker
+            //对于每一个线程，会打印出说明信息并表明worker正在关闭，接着在 worker 线程上调用 join。如果 join 调用失败，通过 unwrap 使得 panic 并进行不优雅的关闭。
+
+            //如第十七章我们见过的，Option 上的 take 方法会取出 Some 而留下 None。
+            //使用if let 解构some并得到了线程，接着在线程上调用join。如果 worker 的线程已然是 None，就知道此时这个 worker 已经清理了其线程所以无需做任何操作。
+
+            if let Some(thread) = worker.thread.take() {
+                thread.join().unwrap();
+            }
+            //向线程发送信息使其停止信号，
+            //但是现在代码还不能以我们期待的方式运行，问题是worker中运行闭包的逻辑：调用join并不会关闭线程，因为他们一直loop来寻找任务
+            //如果采用这个实现来尝试丢弃ThreadPool，则主线程永远阻塞在等待第一个线程结束上。
+            //为了修复这个问题，修改线程既监听是否有 Job 运行也要监听一个应该停止监听并退出无限循环的信号。
+        }
     }
 }

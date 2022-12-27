@@ -1,8 +1,8 @@
 /*
  * @Author: wlj
  * @Date: 2022-12-26 15:41:15
- * @LastEditors: wulongjiang
- * @LastEditTime: 2022-12-26 21:25:49
+ * @LastEditors: wlj
+ * @LastEditTime: 2022-12-27 08:56:26
  * @Description: 将单线程 server 变为多线程 server
  * @see:https://kaisery.github.io/trpl-zh-cn/ch20-02-multithreaded.html
  */
@@ -41,7 +41,7 @@ fn main() {
     //我们期望线程池以类似且熟悉的方式工作，以便从线程切换到线程池并不会对使用该 API 的代码做出较大的修改。
     let listener = TcpListener::bind("127.0.0.1:7878").unwrap();
     let pool = ThreadPool::new(4); //创建一个新的线程池，它有一个课配置的线程数参数，在这里是4
-    for stream in listener.incoming() {
+    for stream in listener.incoming().take(2){//take 方法定义于 Iterator trait，这里限制循环最多头 2 次。ThreadPool 会在 main 的结尾离开作用域，而且还会看到 drop 实现的运行。
         let stream = stream.unwrap();
 
         pool.execute(|| {
