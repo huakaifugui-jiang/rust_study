@@ -1,8 +1,8 @@
 /*
  * @Author: wlj
  * @Date: 2022-12-28 08:11:00
- * @LastEditors: wlj
- * @LastEditTime: 2022-12-28 17:05:10
+ * @LastEditors: wulongjiang
+ * @LastEditTime: 2022-12-29 01:56:38
  * @Description: 底层探秘: Future 执行器与任务调度
  * @see:https://course.rs/async-rust/async/future-excuting.htmlss
  */
@@ -273,11 +273,14 @@ fn main() {
     };
     //用于生成Future，并把它放入任务通道中
     impl Spawner {
-        fn spawn() {
+        fn spawn(&self, future: impl Future<Output = ()> + 'static + Send) {
             let future = future.boxed();
+            let task = Arc::new(Task{
+                future,
+                task_sender:self.task_sender.clone()
+            });
         }
     }
-
     //一个Future 它可以调度自己（将自己放入任务通道中）然后等待执行器去poll
     struct Task {
         /// 进行中的Future，在未来的某个时间点会被完成
@@ -288,6 +291,8 @@ fn main() {
         //可以将任务自身放回到任务通道中，等待执行器的poll
         task_sender: SyncSender<Arc<Task>>,
     }
+     //在执行器poll一个Future之前，需要调用wake方法进行唤醒，然后再由Waker负责调度该任务并将其放入任务通道中。
+    //  创建 Waker 的最简单的方式就是实现 ArcWake 特征，先来为我们的任务实现 ArcWake 特征，这样它们就能被转变成 Waker 然后被唤醒:
 
     fn new_executor_and_spawner() -> (Executor, Spawner) {
         //任务通道允许的最大缓冲数(任务队列的最大长度)
@@ -297,4 +302,7 @@ fn main() {
 
         (Executor { ready_queue }, Spawner { task_sender })
     }
+
+
+       
 }
