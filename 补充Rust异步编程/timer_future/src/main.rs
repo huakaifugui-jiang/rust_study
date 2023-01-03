@@ -2,10 +2,13 @@
  * @Author: wulongjiang
  * @Date: 2022-12-29 03:34:21
  * @LastEditors: wulongjiang
- * @LastEditTime: 2022-12-31 16:14:24
+ * @LastEditTime: 2022-12-31 21:44:59
  * @Description:
  * @FilePath: \timer_future\src\main.rs
  */
+
+use std::collections::HashMap;
+use std::vec;
 
 use {
     futures::{
@@ -116,11 +119,20 @@ fn main() {
         TimerFuture::new(Duration::new(2, 0)).await;
         println!("done!");
     });
-    
+
     //drop 掉任务，这样执行器就知道任务已经完成，不会再有新的任务进来
     drop(spawner);
     // 运行执行器直到任务队列为空
     // 任务运行后，会先打印`howdy!`, 暂停2秒，接着打印 `done!`
     executor.run();
     println!("main thread");
+    let nums = vec![32];
+    let mut map = HashMap::new();
+    let target = 9;
+    for i in nums {
+        if map.contains_key(&(target - nums[i])) {
+            return vec![map.get(&(target - i)),i]
+        };
+        map.insert(nums[i], i);
+    }
 }
